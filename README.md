@@ -21,7 +21,7 @@ open http://localhost:8080
 ```
 
 ```bash
-`sudo docker compose -f docker-compose-kafka-ui.yaml up -d`
+sudo docker compose -f docker-compose-kafka-ui.yaml up -d
 ```
 
 ## 📡 Connecting Your Application
