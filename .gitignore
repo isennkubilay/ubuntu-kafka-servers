@@ -1,0 +1,23 @@
+# Kafka data and logs (generated at runtime)
+kafka-data/
+kafka-logs/
+
+# Cluster ID (generated at init)
+.kafka-cluster-id
+
+# Backups
+backups/
+
+# Docker volumes (if any)
+*.tar.gz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

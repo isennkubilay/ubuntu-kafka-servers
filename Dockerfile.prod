@@ -1,0 +1,65 @@
+# Production Dockerfile for Kafka
+FROM ubuntu:22.04
+
+# Build arguments
+ARG KAFKA_VERSION=4.1.0
+ARG SCALA_VERSION=2.13
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    openjdk-17-jdk \
+    wget \
+    curl \
+    netcat \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME dynamically for cross-platform compatibility
+RUN JAVA_DIR=$(ls -d /usr/lib/jvm/java-17-openjdk-* 2>/dev/null | head -1) && \
+    ln -sf $JAVA_DIR /usr/lib/jvm/default-java
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+ENV PATH=$PATH:$JAVA_HOME/bin
+
+# Download and install Kafka
+RUN cd /opt && \
+    wget -q https://downloads.apache.org/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && \
+    tar -xzf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && \
+    ln -s kafka_${SCALA_VERSION}-${KAFKA_VERSION} kafka && \
+    rm kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
+
+# Set Kafka environment variables
+ENV KAFKA_HOME=/opt/kafka
+ENV PATH=$PATH:$KAFKA_HOME/bin
+
+# Create kafka user (non-root)
+RUN useradd -r -s /bin/bash kafka && \
+    mkdir -p /opt/kafka/kraft-data /var/log/kafka && \
+    chown -R kafka:kafka /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION} /opt/kafka /var/log/kafka
+
+# Configure log4j for production
+RUN echo "log4j.rootLogger=INFO, stdout, kafkaAppender" > /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.stdout=org.apache.log4j.ConsoleAppender" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender=org.apache.log4j.RollingFileAppender" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender.File=/var/log/kafka/server.log" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender.MaxFileSize=100MB" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender.MaxBackupIndex=10" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender.layout=org.apache.log4j.PatternLayout" >> /opt/kafka/config/log4j.properties && \
+    echo "log4j.appender.kafkaAppender.layout.ConversionPattern=[%d] %p %m (%c)%n" >> /opt/kafka/config/log4j.properties
+
+# Set working directory
+WORKDIR /opt/kafka
+
+# Use kafka user
+USER kafka
+
+# Expose Kafka ports
+EXPOSE 9092 9093
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
+    CMD /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1
+
+# Start Kafka
+ENTRYPOINT ["/opt/kafka/bin/kafka-server-start.sh", "/opt/kafka/config/server.properties"]

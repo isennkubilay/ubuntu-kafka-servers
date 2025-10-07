@@ -1,0 +1,152 @@
+version: '3.9'
+
+services:
+  kafka1:
+    image: sshimage:ubuntu-prod
+    container_name: kafka1
+    hostname: kafka1
+    restart: unless-stopped
+    ports:
+      - "9092:19092"  # Map host:9092 to EXTERNAL listener
+      - "9093:9093"    # Controller
+    volumes:
+      # Persistent data storage
+      - ./kafka-data/kafka1:/opt/kafka/kraft-data
+      - ./kafka-logs/kafka1:/opt/kafka/logs
+      - ./kafka-config/server1.properties:/opt/kafka/config/server.properties:ro
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
+    networks:
+      kafka-net:
+        ipv4_address: 10.20.0.10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  kafka2:
+    image: sshimage:ubuntu-prod
+    container_name: kafka2
+    hostname: kafka2
+    restart: unless-stopped
+    ports:
+      - "9192:19092"  # Map host:9192 to EXTERNAL listener
+      - "9193:9093"    # Controller
+    volumes:
+      - ./kafka-data/kafka2:/opt/kafka/kraft-data
+      - ./kafka-logs/kafka2:/opt/kafka/logs
+      - ./kafka-config/server2.properties:/opt/kafka/config/server.properties:ro
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
+    networks:
+      kafka-net:
+        ipv4_address: 10.20.0.11
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  kafka3:
+    image: sshimage:ubuntu-prod
+    container_name: kafka3
+    hostname: kafka3
+    restart: unless-stopped
+    ports:
+      - "9292:19092"  # Map host:9292 to EXTERNAL listener
+      - "9293:9093"    # Controller
+    volumes:
+      - ./kafka-data/kafka3:/opt/kafka/kraft-data
+      - ./kafka-logs/kafka3:/opt/kafka/logs
+      - ./kafka-config/server3.properties:/opt/kafka/config/server.properties:ro
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
+    networks:
+      kafka-net:
+        ipv4_address: 10.20.0.12
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # Prometheus for monitoring (optional)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus-data:/prometheus
+  #   networks:
+  #     - kafka-net
+
+  # Grafana for visualization (optional)
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:3000:3000"
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   networks:
+  #     - kafka-net
+
+# Volumes section removed - using host bind mounts instead
+# All data stored in ./kafka-data/ and ./kafka-logs/
+
+networks:
+  kafka-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24

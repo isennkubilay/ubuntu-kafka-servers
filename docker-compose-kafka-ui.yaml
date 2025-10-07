@@ -1,0 +1,32 @@
+version: '3.9'
+
+services:
+  # Kafka UI - Optional, remove in production or secure it
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"  # Only accessible from localhost
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'false'
+      KAFKA_CLUSTERS_0_NAME: kafka-production
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092
+      # Add authentication in production
+      AUTH_TYPE: "LOGIN_FORM"
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admintest123!
+    networks:
+      - kafka-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+networks:
+  kafka-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24
