@@ -38,10 +38,6 @@ localhost:9092,localhost:9192,localhost:9292
 10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092
 ```
 
-**See:** `QUICK-CONNECTION.md` for copy-paste examples in Python, Java, Node.js, Go, etc.
-
-## 📚 Documentation
-
 ## 🛠️ Management Commands
 
 ```bash
