@@ -48,11 +48,11 @@ tasks:
       - mkdir -p kafka-data/{kafka1,kafka2,kafka3} kafka-logs/{kafka1,kafka2,kafka3}
       - task: create-network
       - task: format-node
-        vars: {NODE: kafka1, IP: 10.20.0.11, SERVER_NUM: "1"}
+        vars: {NODE: kafka1, IP: 10.20.0.10, SERVER_NUM: "1"}
       - task: format-node
-        vars: {NODE: kafka2, IP: 10.20.0.12, SERVER_NUM: "2"}
+        vars: {NODE: kafka2, IP: 10.20.0.11, SERVER_NUM: "2"}
       - task: format-node
-        vars: {NODE: kafka3, IP: 10.20.0.13, SERVER_NUM: "3"}
+        vars: {NODE: kafka3, IP: 10.20.0.12, SERVER_NUM: "3"}
 
   create-network:
     silent: true

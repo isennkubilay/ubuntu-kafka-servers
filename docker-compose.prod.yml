@@ -5,7 +5,7 @@ services:
     hostname: kafka1
     restart: unless-stopped
     ports:
-      - "9092:19092"  # Map host:9092 to EXTERNAL listener
+      - "9092:19092"  # Map host:9992 to EXTERNAL listener
       - "9093:9093"    # Controller
     volumes:
       # Persistent data storage

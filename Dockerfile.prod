@@ -55,7 +55,7 @@ WORKDIR /opt/kafka
 USER kafka
 
 # Expose Kafka ports
-EXPOSE 9092 9093
+EXPOSE 9092 9192 9292 9093 9193 9293
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
