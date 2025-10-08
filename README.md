@@ -40,7 +40,7 @@ localhost:9092,localhost:9192,localhost:9292
 ### From Docker Container:
 
 ```sh
-10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092docker build -t sshimage:ubuntu-prod -f Dockerfile.prod .
+10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092
 ```
 
 ## 🛠️ Management Commands
