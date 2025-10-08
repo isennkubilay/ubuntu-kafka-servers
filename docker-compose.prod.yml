@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   kafka1:
     image: sshimage:ubuntu-prod
@@ -146,6 +144,7 @@ services:
 
 networks:
   kafka-net:
+    name: ubuntu-servers_kafka-net
     driver: bridge
     ipam:
       config:

@@ -1,4 +1,3 @@
-version: '3.9'
 
 services:
   # Kafka UI - Optional, remove in production or secure it
@@ -14,8 +13,8 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092
       # Add authentication in production
       AUTH_TYPE: "LOGIN_FORM"
-      SPRING_SECURITY_USER_NAME: admin
-      SPRING_SECURITY_USER_PASSWORD: admintest123!
+      SPRING_SECURITY_USER_NAME: ${SPRING_SECURITY_USER_NAME}
+      SPRING_SECURITY_USER_PASSWORD: ${SPRING_SECURITY_USER_PASSWORD}
     networks:
       - kafka-net
     logging:
@@ -26,6 +25,7 @@ services:
 
 networks:
   kafka-net:
+    name: ubuntu-servers_kafka-net
     driver: bridge
     ipam:
       config:
