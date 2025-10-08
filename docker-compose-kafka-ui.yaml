@@ -16,7 +16,8 @@ services:
       SPRING_SECURITY_USER_NAME: ${SPRING_SECURITY_USER_NAME}
       SPRING_SECURITY_USER_PASSWORD: ${SPRING_SECURITY_USER_PASSWORD}
     networks:
-      - kafka-net
+      kafka-net:
+        ipv4_address: 10.20.0.13
     logging:
       driver: "json-file"
       options:
