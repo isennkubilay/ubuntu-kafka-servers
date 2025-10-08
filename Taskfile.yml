@@ -11,6 +11,12 @@ tasks:
     desc: Build Docker image
     cmds:
       - docker build -t sshimage:ubuntu-prod -f Dockerfile.prod .
+  
+  kafka-ui-init:
+    desc: Initialize Kafka UI
+    cmds:
+      - echo "Kafka UI available at http://localhost:8080"
+      - docker compose -f docker-compose-kafka-ui.yaml up -d
 
   init:
     desc: Initialize Kafka cluster

@@ -26,7 +26,7 @@ task ui
 ## Kafka-ui
 
 ```bash
-sudo docker compose -f docker-compose-kafka-ui.yaml up -d
+task kafka-ui-init
 ```
 
 ## 📡 Connecting Your Application
