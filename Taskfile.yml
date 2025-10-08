@@ -1,0 +1,206 @@
+version: '3'
+
+vars:
+  COMPOSE_FILE: docker-compose.prod.yml
+  CLUSTER_ID_FILE: .kafka-cluster-id
+  NETWORK_NAME: ubuntu-servers_kafka-net
+  DOCKER_IMAGE: sshimage:ubuntu-prod
+
+tasks:
+  build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t sshimage:ubuntu-prod -f Dockerfile.prod .
+
+  init:
+    desc: Initialize Kafka cluster
+    cmds:
+      - task: check-prerequisites
+      - task: generate-cluster-id
+      - task: format-storage
+      - echo "Cluster initialized! Run 'task start' to start."
+
+  check-prerequisites:
+    silent: true
+    cmds:
+      - docker info > /dev/null 2>&1 || (echo "Docker not running" && exit 1)
+      - test -f docker-compose.prod.yml || (echo "Compose file not found" && exit 1)
+
+  generate-cluster-id:
+    silent: true
+    cmds:
+      - |
+        if [ -f .kafka-cluster-id ]; then
+          echo "Using existing cluster ID"
+        else
+          docker run --rm --entrypoint /opt/kafka/bin/kafka-storage.sh sshimage:ubuntu-prod random-uuid > .kafka-cluster-id
+          echo "Cluster ID generated"
+        fi
+
+  format-storage:
+    cmds:
+      - mkdir -p kafka-data/{kafka1,kafka2,kafka3} kafka-logs/{kafka1,kafka2,kafka3}
+      - task: create-network
+      - task: format-node
+        vars: {NODE: kafka1, IP: 10.20.0.11, SERVER_NUM: "1"}
+      - task: format-node
+        vars: {NODE: kafka2, IP: 10.20.0.12, SERVER_NUM: "2"}
+      - task: format-node
+        vars: {NODE: kafka3, IP: 10.20.0.13, SERVER_NUM: "3"}
+
+  create-network:
+    silent: true
+    cmds:
+      - docker network inspect ubuntu-servers_kafka-net &> /dev/null || docker network create ubuntu-servers_kafka-net --subnet 10.20.0.0/24
+
+  format-node:
+    internal: true
+    cmds:
+      - |
+        CLUSTER_ID=$(cat .kafka-cluster-id)
+        CONFIG=./kafka-config/server{{.SERVER_NUM}}.properties
+        docker run --rm --network ubuntu-servers_kafka-net --ip {{.IP}} \
+          -v $(pwd)/kafka-data/{{.NODE}}:/opt/kafka/kraft-data \
+          -v $(pwd)/$CONFIG:/opt/kafka/config/server.properties:ro \
+          --entrypoint /bin/bash sshimage:ubuntu-prod \
+          -c "/opt/kafka/bin/kafka-storage.sh format -t $CLUSTER_ID -c /opt/kafka/config/server.properties"
+
+  start:
+    desc: Start Kafka cluster
+    cmds:
+      - docker-compose -f docker-compose.prod.yml up -d
+      - sleep 15
+      - echo "Kafka cluster started"
+
+  stop:
+    desc: Stop Kafka cluster
+    cmds:
+      - docker stop kafka1 kafka2 kafka3 2>/dev/null || docker-compose -f docker-compose.prod.yml down
+      - echo "Kafka cluster stopped"
+
+  restart:
+    desc: Restart Kafka cluster
+    cmds:
+      - task: stop
+      - sleep 5
+      - task: start
+
+  status:
+    desc: Check cluster status
+    cmds:
+      - docker-compose -f docker-compose.prod.yml ps
+      - docker ps --filter name=kafka
+
+  health:
+    desc: Run health checks
+    cmds:
+      - docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --describe --under-replicated-partitions --bootstrap-server 10.20.0.10:9092 2>/dev/null || echo "None"
+      - docker exec kafka1 df -h /opt/kafka/kraft-data
+
+  logs:
+    desc: View logs
+    cmds:
+      - docker logs ${NODE:-kafka1} --tail ${LINES:-100} --follow
+
+  info:
+    desc: Show cluster info
+    cmds:
+      - echo "=== Kafka Brokers ==="
+      - docker exec kafka1 /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server 10.20.0.10:9092 2>/dev/null | grep -E "^10.20.0"
+      - echo ""
+      - echo "=== Topic Count ==="
+      - docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server 10.20.0.10:9092 2>/dev/null | wc -l | xargs echo
+      - echo ""
+      - echo "=== Consumer Groups ==="
+      - docker exec kafka1 /opt/kafka/bin/kafka-consumer-groups.sh --list --bootstrap-server 10.20.0.10:9092 2>/dev/null | wc -l | xargs echo
+
+  create-topic:
+    desc: Create topic
+    cmds:
+      - |
+        if [ -z "$TOPIC" ]; then echo "TOPIC required"; exit 1; fi
+        docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --create --bootstrap-server 10.20.0.10:9092 \
+          --topic "$TOPIC" --partitions ${PARTITIONS:-3} --replication-factor ${REPLICATION:-3}
+
+  delete-topic:
+    desc: Delete topic
+    prompt: Delete topic?
+    cmds:
+      - |
+        if [ -z "$TOPIC" ]; then echo "TOPIC required"; exit 1; fi
+        docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --delete --topic "$TOPIC" --bootstrap-server 10.20.0.10:9092
+
+  list-topics:
+    desc: List topics
+    cmds:
+      - docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server 10.20.0.10:9092
+
+  describe-topic:
+    desc: Describe topic
+    cmds:
+      - |
+        if [ -z "$TOPIC" ]; then echo "TOPIC required"; exit 1; fi
+        docker exec kafka1 /opt/kafka/bin/kafka-topics.sh --describe --topic "$TOPIC" --bootstrap-server 10.20.0.10:9092
+
+  produce:
+    desc: Start producer
+    cmds:
+      - |
+        TOPIC="${TOPIC:-{{.CLI_ARGS}}}"
+        if [ -z "$TOPIC" ]; then echo "Usage: task produce TOPIC=<name> or task produce -- <name>"; exit 1; fi
+        docker exec -it kafka1 /opt/kafka/bin/kafka-console-producer.sh --topic "$TOPIC" --bootstrap-server 10.20.0.10:9092
+
+  consume:
+    desc: Start consumer
+    cmds:
+      - |
+        TOPIC="${TOPIC:-{{.CLI_ARGS}}}"
+        if [ -z "$TOPIC" ]; then echo "Usage: task consume TOPIC=<name> or task consume -- <name>"; exit 1; fi
+        FLAG=$([ "$FROM_BEGINNING" = "true" ] && echo "--from-beginning" || echo "")
+        docker exec -it kafka1 /opt/kafka/bin/kafka-console-consumer.sh --topic "$TOPIC" $FLAG --bootstrap-server 10.20.0.10:9092
+
+  list-groups:
+    desc: List consumer groups
+    cmds:
+      - docker exec kafka1 /opt/kafka/bin/kafka-consumer-groups.sh --list --bootstrap-server 10.20.0.10:9092
+
+  describe-group:
+    desc: Describe consumer group
+    cmds:
+      - |
+        if [ -z "$GROUP" ]; then echo "GROUP required"; exit 1; fi
+        docker exec kafka1 /opt/kafka/bin/kafka-consumer-groups.sh --describe --group "$GROUP" --bootstrap-server 10.20.0.10:9092
+
+  backup:
+    desc: Backup configurations
+    cmds:
+      - mkdir -p backups/$(date +%Y%m%d_%H%M%S)
+      - cp docker-compose.prod.yml backups/$(date +%Y%m%d_%H%M%S)/
+      - cp -r kafka-config backups/$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true
+
+  ui:
+    desc: Open Kafka UI
+    cmds:
+      - open http://localhost:8080 2>/dev/null || echo "Open http://localhost:8080"
+
+  clean:
+    desc: Clean all data
+    prompt: Delete all data?
+    cmds:
+      - task: stop
+      - rm -rf kafka-data/kafka{1,2,3}/* kafka-logs/kafka{1,2,3}/* .kafka-cluster-id
+
+  up:
+    desc: Alias for start
+    cmds:
+      - task: start
+
+  down:
+    desc: Alias for stop
+    cmds:
+      - task: stop
+
+  ps:
+    desc: Show containers
+    cmds:
+      - docker ps --filter name=kafka --format "table {{`{{.Names}}`}}\t{{`{{.Status}}`}}\t{{`{{.Ports}}`}}"

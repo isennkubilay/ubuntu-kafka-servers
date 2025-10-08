@@ -2,23 +2,28 @@
 
 Production-ready Apache Kafka 4.1.0 cluster with KRaft mode (no Zookeeper).
 
-`sudo docker build -t sshimage:ubuntu-prod -f Dockerfile.prod .`
-
 ## 🚀 Quick Start
 
+### Taskfile.yml Commands
+
 ```bash
+# Build Docker image
+task build
+
 # Initialize cluster
-./kafka-cluster-prod.sh init
+task init
 
 # Start cluster
-./kafka-cluster-prod.sh start
+task start
 
 # Check status
-./kafka-cluster-prod.sh status
+task status
 
 # Open Kafka UI
-open http://localhost:8080
+task ui
 ```
+
+## Kafka-ui
 
 ```bash
 sudo docker compose -f docker-compose-kafka-ui.yaml up -d
@@ -35,17 +40,17 @@ localhost:9092,localhost:9192,localhost:9292
 ### From Docker Container:
 
 ```sh
-10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092
+10.20.0.10:9092,10.20.0.11:9092,10.20.0.12:9092docker build -t sshimage:ubuntu-prod -f Dockerfile.prod .
 ```
 
 ## 🛠️ Management Commands
 
 ```bash
-./kafka-cluster-prod.sh status          # Cluster status
-./kafka-cluster-prod.sh create-topic    # Create topic
-./kafka-cluster-prod.sh list-topics     # List all topics
-./kafka-cluster-prod.sh --help          # Full help
-./show-connection-info.sh               # Show connection info
+task status                           # Cluster status
+TOPIC=test-topic task create-topic    # Create topic
+task list-topics                      # List all topics
+task --help                           # Full help
+task ps                               # Show containers
 ```
 
 ## 🧪 Testing
@@ -70,6 +75,6 @@ kcat -b localhost:9092 -L
 ## 🔧 Files
 
 - `docker-compose.prod.yml` - Production cluster configuration
-- `kafka-cluster-prod.sh` - Management script (20+ commands)
+- `Taskfile.yml` - Management script (20+ commands)
 - `kafka-config/server*.properties` - Kafka configurations
 - `test-kafka-connection.py` - Python connection example
